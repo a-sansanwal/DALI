@@ -143,8 +143,9 @@ OpenFile& VideoLoader::get_or_open_file(const std::string &filename) {
     LOG_LINE << "Opening file " << filename << std::endl;
 
     AVFormatContext* raw_fmt_ctx = nullptr;
-    if (avformat_open_input(&raw_fmt_ctx, filename.c_str(), NULL, NULL) < 0) {
-      DALI_FAIL(std::string("Could not open file ") + filename);
+    int ret = avformat_open_input(&raw_fmt_ctx, filename.c_str(), NULL, NULL);
+    if (ret < 0) {
+      DALI_FAIL(std::string("Could not open file ") + filename + " Reason:" + av_err2str(ret));
     }
     file.fmt_ctx_ = make_unique_av<AVFormatContext>(raw_fmt_ctx, avformat_close_input);
 
@@ -224,10 +225,13 @@ OpenFile& VideoLoader::get_or_open_file(const std::string &filename) {
                                      stream->time_base,
                                      file.frame_base_);
 
-    if (codec_id == AV_CODEC_ID_H264 || codec_id == AV_CODEC_ID_HEVC) {
+    if (codec_id == AV_CODEC_ID_H264 || codec_id == AV_CODEC_ID_HEVC ||
+        codec_id == AV_CODEC_ID_MPEG4) {
       const char* filtername = nullptr;
       if (codec_id == AV_CODEC_ID_H264) {
         filtername = "h264_mp4toannexb";
+      } else if (codec_id == AV_CODEC_ID_MPEG4) {
+        filtername = "mpeg4_unpack_bframes";
       } else {
         filtername = "hevc_mp4toannexb";
       }
@@ -271,16 +275,19 @@ OpenFile& VideoLoader::get_or_open_file(const std::string &filename) {
 }
 
 void VideoLoader::seek(OpenFile& file, int frame) {
+    /*
     auto seek_time = av_rescale_q(frame,
                                   file.frame_base_,
                                   file.stream_base_);
-    LOG_LINE << "Seeking to frame " << frame << " timestamp " << seek_time << std::endl;
+    */
+    LOG_LINE << "Seeking to frame " << frame << std::endl;
 
-    auto ret = av_seek_frame(file.fmt_ctx_.get(), file.vid_stream_idx_,
-                             seek_time, AVSEEK_FLAG_BACKWARD);
+    auto ret = avformat_seek_file(file.fmt_ctx_.get(), file.vid_stream_idx_,
+                                  INT64_MIN, frame, INT64_MAX,
+                                  AVSEEK_FLAG_FRAME | AVSEEK_FLAG_BACKWARD);
 
     if (ret < 0) {
-      LOG_LINE << "Unable to skip to ts " << seek_time
+      LOG_LINE << "Unable to skip to frame " << frame
                 << ": " << av_err2str(ret) << std::endl;
     }
 
