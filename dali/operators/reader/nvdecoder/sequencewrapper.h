@@ -81,6 +81,7 @@ struct SequenceWrapper {
   int width;
   int channels;
   int label;
+  int first_frame_idx;
 
  private:
   void wait_until_started_() const {

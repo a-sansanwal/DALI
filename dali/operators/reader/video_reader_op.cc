@@ -35,7 +35,9 @@ number of frames). Supports only constant frame rate videos.)code")
   .OutputFn([](const OpSpec &spec) {
       std::string file_root = spec.GetArgument<std::string>("file_root");
       std::string file_list = spec.GetArgument<std::string>("file_list");
-      return (file_root.empty() && file_list.empty()) ? 1 : 2;
+      bool enable_frame_num = spec.GetArgument<bool>("enable_frame_num");
+      return (file_root.empty() && file_list.empty()) ? 1 :
+             (2 + (enable_frame_num ? 1 : 0));
     })
   .AddOptionalArg("filenames",
       R"code(File names of the video files to load.
@@ -49,6 +51,9 @@ This option is mutually exclusive with `filenames` and `file_list`.)code",
       R"code(Path to the file with a list of pairs ``file label``.
 This option is mutually exclusive with `filenames` and `file_root`.)code",
       std::string())
+  .AddOptionalArg("enable_frame_num",
+      R"code(Return frame number output in file_list or file_root argument is passed)code",
+      false)
   .AddArg("sequence_length",
       R"code(Frames to load per sequence.)code",
       DALI_INT32)
